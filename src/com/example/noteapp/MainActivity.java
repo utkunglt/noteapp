@@ -10,6 +10,7 @@ import com.parse.ParseObject;
 import com.parse.ParseQuery;
 import com.parse.ParseUser;
 
+import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -19,12 +20,19 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.AdapterViewFlipper;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
-public class MainActivity extends ListActivity {
+public class MainActivity extends Activity {
 
 	private List<Note> posts;
+	private ProgressBar prgBar;
+	private NoteAdapter adapter;
+	private ListView lstView;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		Log.d(getClass().getSimpleName(), ">>>onCreate");
@@ -33,15 +41,29 @@ public class MainActivity extends ListActivity {
 		if (currentUser == null) {
 			loadLoginView();
 		}
-		
-		
 		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 		setContentView(R.layout.activity_main);
-		
+		lstView = (ListView) findViewById(android.R.id.list);
+		prgBar = (ProgressBar) findViewById(R.id.pbHeaderProgress);
 		posts = new ArrayList<Note>();
-		ArrayAdapter<Note> adapter = new ArrayAdapter<Note>(this,
-				R.layout.list_item_layout, posts);
-		setListAdapter(adapter);
+		adapter = new NoteAdapter(this,
+		        R.layout.row_layout, posts);
+		
+		lstView.setAdapter(adapter);
+		lstView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,
+                    int position, long id) {
+                Note note = posts.get(position);
+                Intent intent = new Intent(MainActivity.this, EditNoteActivity.class);
+                intent.putExtra("noteId", note.getId());
+                intent.putExtra("noteTitle", note.getTitle());
+                intent.putExtra("noteContent", note.getContent());
+                startActivity(intent);
+                
+            }
+        });
 		refeshPostList();
 	}
 	private void loadLoginView() {
@@ -60,7 +82,7 @@ public class MainActivity extends ListActivity {
 	    return super.onCreateOptionsMenu(menu);
 	}
 	
-	@Override
+	/*@Override
 	protected void onListItemClick(ListView l, View v, int position, long id) {
 		Note note = posts.get(position);
 		Intent intent = new Intent(this, EditNoteActivity.class);
@@ -69,7 +91,7 @@ public class MainActivity extends ListActivity {
 		intent.putExtra("noteContent", note.getContent());
 		startActivity(intent);
 		
-	}
+	}*/
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 	    // Handle presses on the action bar items
@@ -79,6 +101,7 @@ public class MainActivity extends ListActivity {
 	            startActivity(intent);
 	            break;
 	        case R.id.action_refresh:
+	            adapter.clear();
 	        	refeshPostList();
 	             break;
 	        case R.id.action_logout:
@@ -93,18 +116,23 @@ public class MainActivity extends ListActivity {
 	private void refeshPostList(){
 		ParseQuery<ParseObject> query = ParseQuery.getQuery("Post");
 		setProgressBarIndeterminateVisibility(true);
+		prgBar.setVisibility(View.VISIBLE);
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+		        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 		query.findInBackground(new FindCallback<ParseObject>() {
 			
-
 			@Override
 			public void done(List<ParseObject> objects, ParseException e) {
 				ParseQuery<ParseObject> query = ParseQuery.getQuery("Post");
 				setProgressBarIndeterminateVisibility(true);
+				
 				query.findInBackground(new FindCallback<ParseObject>() {
 					
 					@Override
 					public void done(List<ParseObject> objects, ParseException e) {
 						setProgressBarIndeterminateVisibility(false);
+						prgBar.setVisibility(View.GONE);
+						getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 						if (e == null) {
 							posts.clear();
 							for (ParseObject post : objects) {
@@ -113,7 +141,7 @@ public class MainActivity extends ListActivity {
 										post.getString("content"));
 								posts.add(note);
 							}
-							ArrayAdapter<Note> listAdapter = (ArrayAdapter<Note>)getListAdapter();
+							ArrayAdapter<Note> listAdapter = (ArrayAdapter<Note>)lstView.getAdapter();
 							ArrayAdapter<Note> arrayAdapter = listAdapter;
 							arrayAdapter.notifyDataSetChanged();
 						} else {

@@ -60,7 +60,7 @@ public class EditNoteActivity extends Activity {
 			}
 		});
 	}
-
+	
 	private void saveNote() {
 		postTitle = titleEditText.getText().toString();
 		postContent = contentEditText.getText().toString();
